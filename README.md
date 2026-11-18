@@ -7,7 +7,11 @@
 
 ## Overview
 
-The goal of this original project is to detect and track players, referees, and footballs in a video using YOLO, one of the best AI object detection models available. We will also train the model to improve its performance. Additionally, we will assign players to teams based on the colors of their t-shirts using Kmeans for pixel segmentation and clustering. With this information, we can measure a team's ball acquisition percentage in a match. We will also use optical flow to measure camera movement between frames, enabling us to accurately measure a player's movement. Furthermore, we will implement perspective transformation to represent the scene's depth and perspective, allowing us to measure a player's movement in meters rather than pixels. Finally, we will calculate a player's speed and the distance covered. This project covers various concepts and addresses real-world problems, making it suitable for both beginners and experienced machine learning engineers.
+I built this project to **detect and track players, referees, and the ball** in match footage using **YOLO**, and to train the model for better performance. 
+
+Using **K-Means clustering on jersey colours**, I automatically assign players to teams and measure each team's **ball-possession percentage**. I estimate **camera movement with optical flow**, apply a **perspective transformation** to convert pixel positions into **real-world metres**, and compute each player's **speed and distance covered**. 
+
+The result is a complete, hands-on pipeline covering detection, tracking, team classification, and physical metrics — suitable for both beginners and experienced ML engineers.
 
 Built on top of [Abhishek Sakapal's football-analysis](https://github.com/abdullahtarek/football_analysis.git) pipeline, this fork adds **dynamic field area detection**, **camera zoom compensation**, and a **real-time offside detector**.
 
@@ -50,6 +54,51 @@ Built on top of [Abhishek Sakapal's football-analysis](https://github.com/abdull
 - Optical Flow: Camera movement and zoom estimation
 - Perspective Transformation: Scene depth and real-world coordinates
 - Offside Detection: FIFA rule-based positional analysis
+
+## Mathematics & CV Pipeline Architecture
+
+```mermaid
+flowchart TD
+    A["Raw Video Frames"]
+
+    A --> B["YOLOv8 Object Detection"]
+    B --> C["ByteTrack Multi-Object Tracking"]
+
+    A --> E1["Lucas-Kanade Optical Flow (translation)"]
+    E1 --> E["Camera Movement: dx, dy, zoom"]
+
+    A --> FL["FieldLinesDetector (per frame)"]
+    FL --> FL1["White boundary lines: HSV + Canny + HoughLinesP + EMA"]
+    FL --> FL2["Grass stripes: HSV + morphology + DBSCAN + vanishing point"]
+    FL1 --> TR["Trapezoid per frame + stripe count"]
+    FL2 --> TR
+    E --> FL
+
+    C --> H["Position Baseline Extraction (feet / ball centre)"]
+    H --> I["Camera Shift Compensation to position_adjusted"]
+    E --> I
+
+    TR --> J["Dynamic Homography (pixels to metres)"]
+    I --> J
+    J --> JT["position_transformed (+ Shapely validity)"]
+
+    C --> F["Ball Position Linear Interpolation (Pandas)"]
+    F --> G["Player Ball Possession Assigner"]
+
+    JT --> K["Speed & Distance Estimator"]
+
+    C --> D["K-Means Team Classification (jersey + team)"]
+    D --> O["OffsideDetector (FIFA rule)"]
+    G --> O
+    JT --> O
+    C --> O
+
+    D --> L["Annotated Output Video Generator"]
+    G --> L
+    K --> L
+    E --> L
+    O --> L
+```
 
 ## Trained Models
 
